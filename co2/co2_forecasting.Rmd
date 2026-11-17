@@ -1,0 +1,212 @@
+---
+title: "Global CO2 at Mauna Loa: SARIMA Forecasting and a Check Against Reality"
+author: "Minh Phuc Le"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 9, fig.height = 4.5, fig.align = "center",
+                      dev = "png", dpi = 110,
+                      fig.path = "figures/")
+library(forecast)
+library(tseries)
+library(knitr)
+library(kableExtra)
+set.seed(42)
+
+tbl <- function(x, caption, digits = 3) {
+  kable(x, digits = digits, caption = caption) |>
+    kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+}
+```
+
+# Summary
+
+This report models monthly atmospheric CO2 at Mauna Loa (April 2015 to April 2025) with seasonal ARIMA. It then does two things the original analysis did not:
+
+1. **An out-of-sample test**, holding back the last 24 months, to compare the chosen model with simpler alternatives.
+2. **A check against reality.** The model's forecasts from April 2025 are compared with what NOAA actually measured from May 2025 to September 2026.
+
+Key results are collected in section 5.
+
+# 1. Data
+
+```{r data}
+d <- read.csv("data/co2_mlo_2015_2025.csv")
+co2 <- ts(d$average, start = c(2015, 4), frequency = 12)
+
+latest <- read.csv("data/co2_mlo_noaa_latest.csv")
+latest <- latest[(latest$year * 12 + latest$month) > (2025 * 12 + 4), ]
+actual_new <- ts(latest$average, start = c(2025, 5), frequency = 12)
+
+tbl(data.frame(
+  Series = c("Study data", "New NOAA readings"),
+  Start = c("Apr 2015", "May 2025"),
+  End = c("Apr 2025", format(as.Date(sprintf("%d-%02d-01", tail(latest$year, 1), tail(latest$month, 1))), "%b %Y")),
+  Months = c(length(co2), length(actual_new)),
+  `Min (ppm)` = c(min(co2), min(actual_new)),
+  `Max (ppm)` = c(max(co2), max(actual_new)), check.names = FALSE
+), "Monthly mean CO2 at Mauna Loa (NOAA GML)", digits = 2)
+```
+
+```{r plot-series}
+plot(co2, ylab = "CO2 (ppm)", xlab = "", main = "Monthly mean CO2 at Mauna Loa, Apr 2015 to Apr 2025")
+```
+
+The series has a steady upward trend of about 2.5 ppm a year and a regular seasonal cycle: CO2 peaks around May and falls to a low around September and October as northern-hemisphere plants grow.
+
+# 2. The original model
+
+The original analysis took one seasonal difference and **two** regular differences, and chose SARIMA(1,2,2)(0,1,1)[12] by AIC, BIC and residual diagnostics. Two regular differences assume the trend itself keeps changing, which is a strong assumption for a series that rises close to linearly. So the comparison below also includes a model with a single regular difference.
+
+```{r models}
+spec <- list(
+  "SARIMA(1,2,2)(0,1,1) [original]" = list(order = c(1, 2, 2), seasonal = c(0, 1, 1), drift = FALSE),
+  "SARIMA(1,1,1)(0,1,1) with drift"  = list(order = c(1, 1, 1), seasonal = c(0, 1, 1), drift = TRUE),
+  "SARIMA(0,1,1)(0,1,1) with drift"  = list(order = c(0, 1, 1), seasonal = c(0, 1, 1), drift = TRUE)
+)
+fit_spec <- function(y, s) Arima(y, order = s$order, seasonal = s$seasonal, include.drift = s$drift, method = "ML")
+
+full_fits <- lapply(spec, fit_spec, y = co2)
+ic <- data.frame(Model = names(full_fits),
+                 AICc = sapply(full_fits, function(f) f$aicc),
+                 `Ljung-Box p (lag 24)` = sapply(full_fits, function(f) Box.test(residuals(f), lag = 24, type = "Ljung-Box", fitdf = length(coef(f)))$p.value),
+                 check.names = FALSE, row.names = NULL)
+tbl(ic, "Full-sample fit (AICc is not comparable across different orders of differencing)")
+```
+
+AICc cannot compare models with different differencing, because they are fit to different transformed series. Forecast accuracy on held-out data can.
+
+# 3. Out-of-sample test
+
+**Set-up.** The last 24 months (May 2023 to April 2025) are held back and every model is fit on April 2015 to April 2023 only. Two simple benchmarks are added:
+
+- **Seasonal naive:** each month equals the same month last year.
+- **Seasonal naive with drift:** the same, plus the average yearly rise.
+
+ETS (exponential smoothing, chosen automatically) is included as a different model family.
+
+```{r holdout}
+h <- 24
+train <- window(co2, end = c(2023, 4))
+test  <- window(co2, start = c(2023, 5))
+
+snaive_drift <- function(y, h) {
+  fc <- snaive(y, h = h)
+  slope <- mean(diff(y, lag = 12)) / 12
+  fc$mean <- fc$mean + slope * rep(seq_len(ceiling(h / 12)), each = 12)[seq_len(h)] * 12
+  fc
+}
+
+fcs <- c(lapply(spec, function(s) forecast(fit_spec(train, s), h = h)),
+         list("ETS (auto)" = forecast(ets(train), h = h),
+              "Seasonal naive" = snaive(train, h = h),
+              "Seasonal naive with drift" = snaive_drift(train, h)))
+
+acc <- t(sapply(fcs, function(f) accuracy(f$mean, test)[1, c("RMSE", "MAE", "MAPE")]))
+scale_snaive <- mean(abs(diff(as.numeric(train), lag = 12)))
+acc <- data.frame(Model = rownames(acc), acc,
+                  MASE = sapply(fcs, function(f) mean(abs(test - f$mean)) / scale_snaive),
+                  row.names = NULL)
+tbl(acc[order(acc$RMSE), ], "Forecasts from Apr 2023, errors on May 2023 to Apr 2025 (ppm)", digits = 3)
+```
+
+```{r holdout-plot, fig.height=5}
+plot(window(co2, start = c(2020, 1)), ylab = "CO2 (ppm)", xlab = "",
+     main = "Forecasts made in April 2023 vs what happened",
+     ylim = range(c(window(co2, start = c(2020, 1)), sapply(fcs, function(f) f$mean))))
+cols <- c("firebrick", "steelblue", "darkgreen", "purple", "grey50", "darkorange")
+for (i in seq_along(fcs)) lines(fcs[[i]]$mean, col = cols[i], lwd = 2, lty = ifelse(i > 3, 2, 1))
+abline(v = 2023 + 3.5 / 12, lty = 3)
+legend("topleft", legend = names(fcs), col = cols, lwd = 2, lty = c(1, 1, 1, 2, 2, 2), bty = "n", cex = 0.8)
+```
+
+```{r best-holdout, include=FALSE}
+best_holdout <- acc$Model[which.min(acc$RMSE)]
+orig_rmse <- acc$RMSE[acc$Model == "SARIMA(1,2,2)(0,1,1) [original]"]
+best_rmse <- min(acc$RMSE)
+```
+
+Over the two held-out years the most accurate model was **`r best_holdout`** (RMSE `r round(best_rmse, 2)` ppm), against `r round(orig_rmse, 2)` ppm for the original model.
+
+# 4. Forecast vs reality
+
+The study data ended in April 2025. Here every model is fit on the full study data, exactly as the original analysis did, and its forecasts are compared with the `r length(actual_new)` monthly readings NOAA has published since.
+
+```{r reality}
+h2 <- length(actual_new)
+fc_real <- c(lapply(full_fits, forecast, h = h2, level = c(80, 95)),
+             list("ETS (auto)" = forecast(ets(co2), h = h2, level = c(80, 95))))
+
+real_acc <- data.frame(
+  Model = names(fc_real),
+  RMSE = sapply(fc_real, function(f) sqrt(mean((actual_new - f$mean)^2))),
+  MAE  = sapply(fc_real, function(f) mean(abs(actual_new - f$mean))),
+  `Mean error (actual - forecast)` = sapply(fc_real, function(f) mean(actual_new - f$mean)),
+  `Inside 95% band` = sapply(fc_real, function(f) sprintf("%d of %d", sum(actual_new >= f$lower[, 2] & actual_new <= f$upper[, 2]), h2)),
+  check.names = FALSE, row.names = NULL)
+tbl(real_acc, "Forecasts from Apr 2025 vs NOAA readings (ppm)", digits = 2)
+```
+
+```{r reality-plot, fig.height=5.5}
+f0 <- fc_real[[1]]
+plot(f0, include = 36, main = "Original model's forecast from April 2025 vs NOAA readings",
+     ylab = "CO2 (ppm)", xlab = "", fcol = "firebrick", shadecols = c("#fbe3e1", "#f4c7c3"),
+     ylim = range(c(window(co2, start = c(2022, 5)), f0$lower[, 2], f0$upper[, 2], actual_new)))
+lines(actual_new, col = "black", lwd = 2)
+points(actual_new, pch = 19, cex = 0.7)
+lines(fc_real[[2]]$mean, col = "steelblue", lwd = 2, lty = 2)
+legend("topleft", bty = "n", cex = 0.85,
+       legend = c("Original SARIMA(1,2,2)(0,1,1) forecast", "SARIMA(1,1,1)(0,1,1) with drift", "NOAA actual"),
+       col = c("firebrick", "steelblue", "black"), lwd = 2, lty = c(1, 2, 1))
+```
+
+```{r reality-table}
+months_tbl <- data.frame(
+  Month = format(seq(as.Date("2025-05-01"), by = "month", length.out = h2), "%b %Y"),
+  Actual = as.numeric(actual_new),
+  `Original forecast` = as.numeric(f0$mean),
+  Error = as.numeric(actual_new - f0$mean),
+  `95% band` = sprintf("%.1f to %.1f", f0$lower[, 2], f0$upper[, 2]), check.names = FALSE)
+tbl(months_tbl, "Month by month: original model vs NOAA", digits = 2)
+
+first_430 <- months_tbl$Month[which(months_tbl$Actual >= 430)[1]]
+```
+
+**What the comparison shows.** The original model did its job in one sense: every new reading fell inside its 95% band. But after a close first month (0.14 ppm below the actual value in May 2025), its forecasts were above the actual values in every month, and the gap widened to more than 1.5 ppm by mid 2026. That is the signature of the second regular difference, which lets the model extrapolate a trend that keeps speeding up. The single-difference SARIMA models assume a steady rise and tracked reality most closely, cutting the error by about a fifth. Every model ran somewhat high, so CO2 rose a little more slowly over 2025 and 2026 than its recent trend implied.
+
+The original report expected monthly CO2 to pass 430 ppm within ten months. The first NOAA monthly mean at or above 430 ppm after the study period was **`r first_430`**.
+
+# 5. Results in one table
+
+```{r results}
+orig <- real_acc[1, ]
+res <- data.frame(
+  Question = c("Most accurate model on the 24-month holdout",
+               "Original model, holdout RMSE (ppm)",
+               "Original model vs reality, RMSE over the new months (ppm)",
+               "Best model vs reality (RMSE, ppm)",
+               "Original model, NOAA readings inside the 95% band",
+               "First month at or above 430 ppm"),
+  Answer = c(sprintf("%s (RMSE %.2f)", best_holdout, best_rmse),
+             sprintf("%.2f", orig_rmse),
+             sprintf("%.2f over %d months", orig$RMSE, h2),
+             sprintf("%s (%.2f)", real_acc$Model[which.min(real_acc$RMSE)], min(real_acc$RMSE)),
+             orig$`Inside 95% band`,
+             first_430))
+tbl(res, "Key results")
+```
+
+# 6. Limitations
+
+- Ten years of monthly data is a short window for a series with a 12-month cycle; longer history would sharpen the seasonal estimates.
+- SARIMA uses only the series' own past. Events such as El Niño years, which affect how fast CO2 rises, are not modelled.
+- Recent NOAA monthly values can be revised slightly; revisions to the 2015 to 2025 study data were at most 0.04 ppm.
+
+*Data: Dr. Xin Lan, NOAA/GML (gml.noaa.gov/ccgg/trends/) and Dr. Ralph Keeling, Scripps Institution of Oceanography (scrippsco2.ucsd.edu/).*

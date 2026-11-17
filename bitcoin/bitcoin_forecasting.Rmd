@@ -1,0 +1,283 @@
+---
+title: "Bitcoin Index: ARIMA Forecasting, Tested Out of Sample"
+author: "Minh Phuc Le"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 9, fig.height = 4.5, fig.align = "center",
+                      dev = "png", dpi = 110,
+                      fig.path = "figures/")
+library(forecast)
+library(TSA)
+library(tseries)
+library(rugarch)
+library(knitr)
+library(kableExtra)
+set.seed(42)
+
+M <- 1e6  # plots show index points in millions
+scale_fc <- function(f, k = M) { f$mean <- f$mean / k; f$lower <- f$lower / k; f$upper <- f$upper / k; f$x <- f$x / k; f }
+
+tbl <- function(x, caption, digits = 3) {
+  kable(x, digits = digits, caption = caption, format.args = list(big.mark = ",")) |>
+    kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+}
+```
+
+# Summary
+
+This report models a monthly Bitcoin index (August 2011 to January 2025, 162 months) with ARIMA, then asks the question the original analysis skipped: **does the chosen model forecast better than a random walk on data it has not seen?**
+
+Key results are collected in section 6.
+
+# 1. Data
+
+The series is an index supplied with the course data. It tracks Bitcoin's price level but is not the USD price of one coin, so values are in index points.
+
+```{r data}
+raw <- read.csv("data/bitcoin_index.csv")
+btc <- ts(raw$Bitcoin, start = c(2011, 8), frequency = 12)
+
+tbl(data.frame(
+  Start = "Aug 2011", End = "Jan 2025", Months = length(btc),
+  Min = min(btc), Median = median(btc), Max = max(btc)
+), "Bitcoin index: overview", digits = 0)
+```
+
+```{r plot-series}
+par(mfrow = c(1, 2))
+plot(btc / M, main = "Bitcoin index", ylab = "Index points (millions)", xlab = "")
+plot(log(btc), main = "Bitcoin index (log scale)", ylab = "log(index)", xlab = "")
+par(mfrow = c(1, 1))
+```
+
+On the raw scale the series is dominated by the last few years. On the log scale the growth looks steady and the swings look similar in size across time, which is why a log-type transformation is used below.
+
+# 2. Transformation and model choice (full sample)
+
+Box-Cox estimation on the full series gives a lambda close to zero, so the transformation is almost a log. One regular difference makes the transformed series stationary.
+
+```{r boxcox}
+bc <- BoxCox.ar(btc, lambda = seq(0, 0.5, 0.01), main = "Box-Cox log-likelihood")
+lambda <- bc$lambda[which.max(bc$loglike)]
+btc_bc <- BoxCox(btc, lambda)
+adf <- adf.test(diff(btc_bc))
+```
+
+Selected lambda: **`r lambda`**. ADF test on the differenced, transformed series: p = `r round(adf$p.value, 3)`.
+
+The original analysis shortlisted three models from the ACF, PACF, EACF and BIC table. Their information criteria on the full sample:
+
+```{r ic}
+cands <- list("ARIMA(1,1,0)" = c(1, 1, 0), "ARIMA(0,1,1)" = c(0, 1, 1), "ARIMA(2,1,2)" = c(2, 1, 2))
+fits <- lapply(cands, function(o) Arima(btc, order = o, lambda = lambda, method = "ML"))
+ic <- data.frame(Model = names(fits),
+                 AIC = sapply(fits, AIC), BIC = sapply(fits, BIC),
+                 `Ljung-Box p (lag 12)` = sapply(fits, function(f) Box.test(residuals(f), lag = 12, type = "Ljung-Box", fitdf = sum(arimaorder(f)[c(1, 3)]))$p.value),
+                 check.names = FALSE, row.names = NULL)
+tbl(ic[order(ic$AIC), ], "Candidate models, full sample")
+```
+
+ARIMA(1,1,0) has the lowest AIC and BIC and was the original choice. Model fit on the same data says little about forecasting, though, so the next section tests it properly.
+
+# 3. Out-of-sample test
+
+**Set-up.** The last 24 months (February 2023 to January 2025) are held back. Every model is fit on August 2011 to January 2023 only.
+
+Two benchmarks matter for an asset price:
+
+- **Random walk:** next month equals this month. Hard to beat for most market prices.
+- **Random walk with drift:** the same, plus the average historical growth rate.
+
+All models are fit on the same Box-Cox scale and errors are measured in index points. Because the index rose about 30,000-fold over the sample, errors are compared with **MAPE** (percentage error) and with **error relative to the random walk** (below 1 means the model beats it). Scaled measures such as MASE depend heavily on which period sets the scale, so they are not used here.
+
+Because the original analysis found an upward trend, ARIMA(1,1,0) **with drift** is added as a candidate.
+
+```{r split}
+h <- 24
+train <- window(btc, end = c(2023, 1))
+test  <- window(btc, start = c(2023, 2))
+```
+
+## 3a. One forecast, 24 months ahead
+
+Each model forecasts all 24 months from January 2023, as if the forecast had been made then.
+
+```{r multistep}
+# Re-estimate lambda on the training data only (TSA's plotit = FALSE is broken, so draw to a null device)
+lambda_tr <- {
+  pdf(NULL); b <- BoxCox.ar(train, lambda = seq(0, 0.5, 0.01)); dev.off()
+  b$lambda[which.max(b$loglike)]
+}
+
+fc_models <- list(
+  "ARIMA(1,1,0)" = forecast(Arima(train, order = c(1, 1, 0), lambda = lambda_tr), h = h),
+  "ARIMA(0,1,1)" = forecast(Arima(train, order = c(0, 1, 1), lambda = lambda_tr), h = h),
+  "ARIMA(2,1,2)" = forecast(Arima(train, order = c(2, 1, 2), lambda = lambda_tr, method = "CSS-ML"), h = h),
+  "ARIMA(1,1,0) with drift" = forecast(Arima(train, order = c(1, 1, 0), lambda = lambda_tr, include.drift = TRUE), h = h),
+  "Random walk"  = rwf(train, h = h, lambda = lambda_tr),
+  "Random walk with drift" = rwf(train, h = h, drift = TRUE, lambda = lambda_tr)
+)
+
+acc_multi <- t(sapply(fc_models, function(f) accuracy(f, test)["Test set", c("RMSE", "MAE", "MAPE")]))
+acc_multi <- data.frame(Model = rownames(acc_multi), acc_multi, row.names = NULL)
+acc_multi$`MAE vs random walk` <- acc_multi$MAE / acc_multi$MAE[acc_multi$Model == "Random walk"]
+tbl(acc_multi[order(acc_multi$MAPE), ], "24-month-ahead forecast from Jan 2023, test-set errors", digits = 2)
+```
+
+```{r multistep-plot, fig.height=5}
+plot(window(btc, start = c(2019, 1)) / M, ylab = "Index points (millions)", xlab = "",
+     main = "Forecasts made in January 2023 vs what happened",
+     ylim = range(c(window(btc, start = c(2019, 1)), sapply(fc_models, function(f) f$mean))) / M)
+cols <- c("firebrick", "darkorange", "purple", "darkgreen", "grey40", "steelblue")
+for (i in seq_along(fc_models)) lines(fc_models[[i]]$mean / M, col = cols[i], lwd = 2, lty = ifelse(i > 4, 2, 1))
+abline(v = 2023 + 0.5 / 12, lty = 3)
+legend("topleft", legend = names(fc_models), col = cols, lwd = 2, lty = c(1, 1, 1, 1, 2, 2), bty = "n", cex = 0.85)
+```
+
+## 3b. Rolling one-month-ahead forecasts
+
+A single 24-month forecast depends heavily on where it starts. A fairer test is what a forecaster would do each month: refit on everything known so far and forecast one month ahead. This is repeated for each of the 24 test months.
+
+```{r rolling}
+one_step <- function(fit_fun) {
+  sapply(seq_len(h), function(i) {
+    y <- window(btc, end = time(train)[length(train)] + (i - 1) / 12)
+    fit_fun(y)
+  })
+}
+roll <- list(
+  "ARIMA(1,1,0)" = one_step(function(y) forecast(Arima(y, order = c(1, 1, 0), lambda = lambda_tr), h = 1)$mean[1]),
+  "ARIMA(0,1,1)" = one_step(function(y) forecast(Arima(y, order = c(0, 1, 1), lambda = lambda_tr), h = 1)$mean[1]),
+  "ARIMA(1,1,0) with drift" = one_step(function(y) forecast(Arima(y, order = c(1, 1, 0), lambda = lambda_tr, include.drift = TRUE), h = 1)$mean[1]),
+  "Random walk"  = one_step(function(y) rwf(y, h = 1, lambda = lambda_tr)$mean[1]),
+  "Random walk with drift" = one_step(function(y) rwf(y, h = 1, drift = TRUE, lambda = lambda_tr)$mean[1])
+)
+actual <- as.numeric(test)
+acc_roll <- data.frame(
+  Model = names(roll),
+  RMSE = sapply(roll, function(p) sqrt(mean((actual - p)^2))),
+  MAE  = sapply(roll, function(p) mean(abs(actual - p))),
+  MAPE = sapply(roll, function(p) mean(abs((actual - p) / actual)) * 100),
+  row.names = NULL)
+acc_roll$`MAE vs random walk` <- acc_roll$MAE / acc_roll$MAE[acc_roll$Model == "Random walk"]
+tbl(acc_roll[order(acc_roll$MAPE), ], "Rolling one-month-ahead forecasts, 24 test months", digits = 2)
+
+dm <- dm.test(actual - roll[["ARIMA(1,1,0)"]], actual - roll[["Random walk"]], h = 1, power = 1)
+dm_drift <- dm.test(actual - roll[["Random walk with drift"]], actual - roll[["Random walk"]], h = 1, power = 1)
+```
+
+Diebold-Mariano tests on absolute errors (null: equal accuracy):
+
+- ARIMA(1,1,0) vs random walk: p = **`r round(dm$p.value, 3)`**
+- Random walk with drift vs random walk: p = **`r round(dm_drift$p.value, 3)`**
+
+**Reading the two tests together.**
+
+- **Month to month, nothing beats a random walk.** The short-term correlation that ARIMA(1,1,0) captures does not improve one-month forecasts, and neither model's difference from the random walk is statistically significant.
+- **Over two years, drift matters a lot.** Adding a steady upward trend cut the 24-month forecast error by about three quarters. Twenty-four months is too short to say whether that trend is lasting or a feature of one strong rising period.
+
+# 4. Volatility: is there clustering to model?
+
+The original report suggested combining ARIMA with a GARCH model because the series looked heteroscedastic. That is worth testing rather than assuming. The tests below use monthly log returns.
+
+```{r returns}
+ret <- diff(log(btc))
+pdf(NULL); ml <- McLeod.Li.test(y = ret); dev.off()
+lb_sq <- Box.test(ret^2, lag = 12, type = "Ljung-Box")
+```
+
+```{r mcleod, fig.height=3.5}
+McLeod.Li.test(y = ret, main = "McLeod-Li test on monthly log returns (points below the dashed line are significant)")
+```
+
+The McLeod-Li test is significant at only `r sum(ml$p.values[1:12] < 0.05)` of the first 12 lags, and a Ljung-Box test on squared returns gives p = `r round(lb_sq$p.value, 3)`. Evidence of volatility clustering at monthly frequency is weak.
+
+```{r garch}
+spec_g <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                     mean.model = list(armaOrder = c(1, 0), include.mean = TRUE),
+                     distribution.model = "std")
+spec_c <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(0, 0)),
+                     mean.model = list(armaOrder = c(1, 0), include.mean = TRUE),
+                     distribution.model = "std")
+gfit <- ugarchfit(spec_g, data = as.numeric(ret), solver = "hybrid")
+cfit <- ugarchfit(spec_c, data = as.numeric(ret), solver = "hybrid")
+cf <- coef(gfit)
+ic_v <- data.frame(Model = c("AR(1), constant variance", "AR(1)-GARCH(1,1)"),
+                   AIC = c(infocriteria(cfit)[1], infocriteria(gfit)[1]),
+                   BIC = c(infocriteria(cfit)[2], infocriteria(gfit)[2]))
+tbl(data.frame(Parameter = names(cf), Estimate = cf,
+               `p-value` = gfit@fit$matcoef[, 4], check.names = FALSE, row.names = NULL),
+    "AR(1)-GARCH(1,1) with Student-t errors, monthly log returns")
+tbl(ic_v, "Does GARCH improve on constant variance? (lower is better)")
+```
+
+The ARCH term (alpha1 = `r round(cf["alpha1"], 3)`, p = `r round(gfit@fit$matcoef["alpha1", 4], 2)`) is effectively zero, so last month's shock does not raise this month's volatility, and the constant-variance model has the lower AIC and BIC. **At monthly frequency, GARCH adds nothing.** The near-1 beta only traces a slow decline in volatility over the whole sample, which the chart below shows directly.
+
+```{r vol-by-year, fig.height=4}
+yr <- floor(time(ret))
+sd_year <- tapply(as.numeric(ret), yr, sd)
+sd_year <- sd_year[names(sd_year) %in% as.character(2012:2024)]
+barplot(sd_year * 100, col = "steelblue", border = NA, ylab = "SD of monthly returns (%)",
+        main = "Volatility of monthly returns by calendar year")
+```
+
+Volatility was extreme in Bitcoin's early years (above `r round(max(sd_year) * 100)`% a month in 2013) and has stayed in a narrower band of roughly `r round(min(sd_year[as.character(2014:2024)]) * 100)` to `r round(max(sd_year[as.character(2014:2024)]) * 100)`% a month since 2014. A model of daily returns would be the right place to look for short-term clustering.
+
+# 5. Twelve-month forecast
+
+Two forecasts to January 2026 are shown, both refit on all data to January 2025: the original ARIMA(1,1,0), and ARIMA(1,1,0) with drift, which reflects what the out-of-sample test rewarded. The bands show how much uncertainty each model admits.
+
+```{r fan, fig.height=5}
+final <- Arima(btc, order = c(1, 1, 0), lambda = lambda)
+final_d <- Arima(btc, order = c(1, 1, 0), lambda = lambda, include.drift = TRUE)
+fc12 <- forecast(final, h = 12, level = c(80, 95))
+fc12d <- forecast(final_d, h = 12, level = c(80, 95))
+plot(scale_fc(fc12d), include = 48, main = "Forecast to January 2026",
+     ylab = "Index points (millions)", xlab = "", fcol = "darkgreen", shadecols = c("#e8f4ea", "#cfe8d4"))
+lines(fc12$mean / M, col = "firebrick", lwd = 2, lty = 2)
+legend("topleft", bty = "n", cex = 0.85, lwd = 2, lty = c(1, 2), col = c("darkgreen", "firebrick"),
+       legend = c("ARIMA(1,1,0) with drift (bands: 80% and 95%)", "ARIMA(1,1,0), no drift"))
+fan_tbl <- data.frame(Model = rep(c("ARIMA(1,1,0)", "ARIMA(1,1,0) with drift"), each = 2),
+                      Month = rep(c("Jul 2025", "Jan 2026"), 2),
+                      Forecast = c(fc12$mean[c(6, 12)], fc12d$mean[c(6, 12)]),
+                      `Lower 95%` = c(fc12$lower[c(6, 12), 2], fc12d$lower[c(6, 12), 2]),
+                      `Upper 95%` = c(fc12$upper[c(6, 12), 2], fc12d$upper[c(6, 12), 2]), check.names = FALSE)
+tbl(fan_tbl, "Point forecasts and 95% intervals (index points)", digits = 0)
+```
+
+Without drift the forecast is flat. With drift it keeps rising at the historical average rate. In both cases the upper end of the 95% interval a year out is about 25 to 30 times the lower end, which is the honest message: a monthly ARIMA model cannot say much about where Bitcoin will be in a year.
+
+# 6. Results in one table
+
+```{r results}
+best_multi <- acc_multi$Model[which.min(acc_multi$MAPE)]
+best_roll <- acc_roll$Model[which.min(acc_roll$MAPE)]
+res <- data.frame(
+  Question = c("Best model by AIC/BIC (full sample)",
+               "Best 24-month forecast from Jan 2023 (MAPE)",
+               "Best rolling 1-month forecast (MAPE)",
+               "ARIMA(1,1,0) MAE relative to random walk (rolling)",
+               "Diebold-Mariano p, ARIMA(1,1,0) vs random walk",
+               "Does GARCH beat constant variance (BIC)?"),
+  Answer = c(ic$Model[which.min(ic$AIC)],
+             sprintf("%s (%.1f%%)", best_multi, min(acc_multi$MAPE)),
+             sprintf("%s (%.1f%%)", best_roll, min(acc_roll$MAPE)),
+             sprintf("%.2f", acc_roll$`MAE vs random walk`[acc_roll$Model == "ARIMA(1,1,0)"]),
+             sprintf("%.3f", dm$p.value),
+             ifelse(ic_v$BIC[2] < ic_v$BIC[1], "Yes", "No")))
+tbl(res, "Key results")
+```
+
+# 7. Limitations
+
+- Monthly data hides most of Bitcoin's volatility; daily data would give GARCH far more to work with.
+- The test window (2023 to 2025) was a strong rising period, which favours models with an upward drift. A different window could rank the models differently.
+- The model uses only the series' own past. Regulation, halving cycles and macro conditions are outside it.
