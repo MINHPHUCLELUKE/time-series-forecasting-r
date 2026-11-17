@@ -63,7 +63,7 @@ The series has a steady upward trend of about 2.5 ppm a year and a regular seaso
 
 # 2. The original model
 
-The original analysis took one seasonal difference and **two** regular differences, and chose SARIMA(1,2,2)(0,1,1)[12] by AIC, BIC and residual diagnostics. Two regular differences assume the trend itself keeps changing, which is a strong assumption for a series that rises close to linearly. So the comparison below also includes a model with a single regular difference.
+The original analysis took one seasonal difference and **two** regular differences, and chose SARIMA(1,2,2)(0,1,1)[12] by AIC and residual diagnostics (BIC narrowly preferred SARIMA(0,2,2)(0,1,1)[12]). Two regular differences assume the trend itself keeps changing, which is a strong assumption for a series that rises close to linearly. So the comparison below also includes a model with a single regular difference.
 
 ```{r models}
 spec <- list(

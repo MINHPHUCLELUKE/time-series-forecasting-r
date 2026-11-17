@@ -1925,11 +1925,11 @@ September and October as northern-hemisphere plants grow.</p>
 <h1>2. The original model</h1>
 <p>The original analysis took one seasonal difference and
 <strong>two</strong> regular differences, and chose
-SARIMA(1,2,2)(0,1,1)[12] by AIC, BIC and residual diagnostics. Two
-regular differences assume the trend itself keeps changing, which is a
-strong assumption for a series that rises close to linearly. So the
-comparison below also includes a model with a single regular
-difference.</p>
+SARIMA(1,2,2)(0,1,1)[12] by AIC and residual diagnostics (BIC narrowly
+preferred SARIMA(0,2,2)(0,1,1)[12]). Two regular differences assume the
+trend itself keeps changing, which is a strong assumption for a series
+that rises close to linearly. So the comparison below also includes a
+model with a single regular difference.</p>
 <pre class="r"><code>spec &lt;- list(
   &quot;SARIMA(1,2,2)(0,1,1) [original]&quot; = list(order = c(1, 2, 2), seasonal = c(0, 1, 1), drift = FALSE),
   &quot;SARIMA(1,1,1)(0,1,1) with drift&quot;  = list(order = c(1, 1, 1), seasonal = c(0, 1, 1), drift = TRUE),

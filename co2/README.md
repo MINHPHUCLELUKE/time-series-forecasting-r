@@ -38,7 +38,7 @@ The report's forecast ended in February 2026. NOAA has since published readings 
 
 - The 430 ppm call was right: NOAA's May 2025 monthly mean was 430.51 ppm.
 - All 17 NOAA readings from May 2025 to September 2026 fell inside the model's 95% prediction band, including the 10 months the report forecast.
-- After the first month the forecast ran high in every month. Over the report's 10 months the gap grew to about 1 ppm (February 2026); in the extended forecast it reached almost 2 ppm (1.97 ppm in July 2026). On the 24-month holdout test, the selected model was the least accurate of the SARIMA models compared. A model with a steady trend (one regular difference) tracked the actual readings more closely.
+- After the first month the forecast ran high in every month. Over the report's 10 months the gap grew to about 1 ppm (February 2026); in the extended forecast it reached almost 2 ppm (1.97 ppm in July 2026). On the 24-month holdout test, the selected model was the least accurate of the SARIMA models compared, and simpler benchmarks also beat it: ETS (RMSE 1.10 ppm) and a seasonal naive forecast with drift (1.31 ppm), against 1.98 ppm. A model with a steady trend (one regular difference) tracked the actual readings more closely.
 
 ## Data
 

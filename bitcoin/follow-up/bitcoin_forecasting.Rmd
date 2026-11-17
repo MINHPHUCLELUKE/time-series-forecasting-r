@@ -181,7 +181,7 @@ Diebold-Mariano tests on absolute errors (null: equal accuracy):
 
 **Reading the two tests together.**
 
-- **Month to month, nothing beats a random walk.** The short-term correlation that ARIMA(1,1,0) captures does not improve one-month forecasts, and neither model's difference from the random walk is statistically significant.
+- **Month to month, no model beats a random walk significantly.** The short-term correlation that ARIMA(1,1,0) captures does not improve one-month forecasts, and neither model's difference from the random walk is statistically significant.
 - **Over two years, drift matters a lot.** Adding a steady upward trend cut the 24-month forecast error by about three quarters. Twenty-four months is too short to say whether that trend is lasting or a feature of one strong rising period.
 
 # 4. Volatility: is there clustering to model?

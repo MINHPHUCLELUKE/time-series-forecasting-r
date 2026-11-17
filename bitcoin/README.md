@@ -46,7 +46,7 @@ After the report, I tested ARIMA(1,1,0) on the last 24 months of data, fitting i
 
 - Month to month, ARIMA(1,1,0) forecast no better than a random walk (the difference was not significant, Diebold-Mariano p = 0.36).
 - Over the full two years, adding a steady upward drift cut the forecast error by about three quarters.
-- At monthly frequency, a GARCH model did not improve on constant variance. Volatility mainly fell over time, from very high levels in 2011 to 2013.
+- At monthly frequency, a GARCH model did not improve on constant variance. Volatility mainly fell over time, from above 59% a month in 2013 to roughly 13 to 23% a month since 2014.
 
 ## Data
 
