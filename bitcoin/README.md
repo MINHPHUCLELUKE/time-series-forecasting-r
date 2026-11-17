@@ -8,8 +8,8 @@ ARIMA modelling of a monthly Bitcoin index from August 2011 to January 2025 (162
 
 ## Key findings
 
-- **The series is strongly non-stationary.** It trends upward with variance that grows over time and a right-skewed distribution (skewness 1.66). The ADF (p = 0.99), KPSS (p < 0.01) and Phillips-Perron (p = 0.96) tests all point to non-stationarity, and the Shapiro-Wilk test rejects normality.
-- **A near-log transformation plus one difference fixes it.** A Box-Cox transformation with lambda ≈ 0.05 stabilises the variance, and first differencing makes the transformed series stationary (ADF statistic −4.90, p = 0.01).
+- **The series is strongly non-stationary.** It trends upward with variance that grows over time and a right-skewed distribution (skewness 1.66). The ADF (p ≥ 0.99), KPSS (p < 0.01) and Phillips-Perron (p = 0.96) tests all point to non-stationarity, and the Shapiro-Wilk test rejects normality.
+- **A near-log transformation plus one difference fixes it.** A Box-Cox transformation with lambda ≈ 0.05 stabilises the variance, and first differencing makes the transformed series stationary (ADF statistic −4.90, p ≤ 0.01).
 - **Eight candidate models, three retained.** ACF and PACF plots, the EACF table and a BIC subset table proposed eight ARIMA models. Coefficient tests under ML and CSS estimation kept three: ARIMA(1,1,0), ARIMA(0,1,1) and ARIMA(2,1,2).
 - **ARIMA(1,1,0) is the selected model.** It has the lowest AIC (260.37) and BIC (266.53), a significant AR(1) coefficient (0.189, p = 0.015) and in-sample accuracy almost identical to the other two (MASE ≈ 0.176), with one parameter, joint fewest with ARIMA(0,1,1).
 
