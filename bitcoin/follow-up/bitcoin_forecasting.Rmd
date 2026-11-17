@@ -113,7 +113,7 @@ Each model forecasts all 24 months from January 2023, as if the forecast had bee
 ```{r multistep}
 # Re-estimate lambda on the training data only (TSA's plotit = FALSE is broken, so draw to a null device)
 lambda_tr <- {
-  pdf(NULL); b <- BoxCox.ar(train, lambda = seq(0, 0.5, 0.01)); dev.off()
+  pdf(NULL); b <- BoxCox.ar(train, lambda = seq(0, 0.5, 0.01)); invisible(dev.off())
   b$lambda[which.max(b$loglike)]
 }
 
@@ -190,7 +190,7 @@ The original report suggested combining ARIMA with a GARCH model because the ser
 
 ```{r returns}
 ret <- diff(log(btc))
-pdf(NULL); ml <- McLeod.Li.test(y = ret); dev.off()
+pdf(NULL); ml <- McLeod.Li.test(y = ret); invisible(dev.off())
 lb_sq <- Box.test(ret^2, lag = 12, type = "Ljung-Box")
 ```
 

@@ -4,7 +4,7 @@ Two time series analysis reports in R, each taking a real series from exploratio
 
 | Report | Series | Selected model | Highlights |
 |---|---|---|---|
-| [Global CO2 Concentration Time Series Analysis and Forecasting](./co2) | Monthly CO2 at Mauna Loa, Apr 2015 to Apr 2025 | SARIMA(1,2,2)(0,1,1)[12] | Eight SARIMA candidates compared; 10-month forecast predicting 430 ppm, which NOAA confirmed in May 2025 |
+| [Global CO2 Concentration Time Series Analysis and Forecasting](./co2) | Monthly CO2 at Mauna Loa, Apr 2015 to Apr 2025 | SARIMA(1,2,2)(0,1,1)[12] | Eight SARIMA candidates compared; 10-month forecast whose first month matched NOAA's May 2025 reading of 430.5 ppm |
 | [Bitcoin Index Time Series Analysis](./bitcoin) | Monthly Bitcoin index, Aug 2011 to Jan 2025 | ARIMA(1,1,0) | Box-Cox transformation, model specification with ACF/PACF, EACF and BIC table, ML and CSS estimation |
 
 **Full reports (PDF):** [CO2](./co2/global-co2-time-series-analysis.pdf) · [Bitcoin](./bitcoin/bitcoin-index-time-series-analysis.pdf)
