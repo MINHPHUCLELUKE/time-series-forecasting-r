@@ -32,13 +32,13 @@ Seasonal ARIMA modelling of monthly atmospheric CO2 at the Mauna Loa Observatory
 
 ## Follow-up: checking the forecast against reality
 
-The report's forecast ended in February 2026. NOAA has since published readings up to September 2026, so I compared the forecast with what was actually measured, and tested the model on a 24-month holdout.
+The report's forecast ended in February 2026. NOAA has since published readings up to September 2026, so I refit the selected model exactly as in the report and extended its forecast to 17 months to compare with what was actually measured. Its first 10 months reproduce the report's forecast to two decimal places. I also tested the model on a 24-month holdout.
 
 **[View the follow-up analysis (live)](https://minhphucleluke.github.io/time-series-forecasting-r/co2/follow-up/co2-forecasting-report.html)** · [R Markdown source](./follow-up/co2_forecasting.Rmd)
 
 - The 430 ppm call was right: NOAA's May 2025 monthly mean was 430.51 ppm.
-- All 17 NOAA readings from May 2025 to September 2026 fell inside the model's 95% prediction band.
-- After the first month the forecast ran high in every month, and the gap reached almost 2 ppm (1.97 ppm in July 2026). On the 24-month holdout test, the selected model was the least accurate of the SARIMA models compared. A model with a steady trend (one regular difference) tracked the actual readings more closely.
+- All 17 NOAA readings from May 2025 to September 2026 fell inside the model's 95% prediction band, including the 10 months the report forecast.
+- After the first month the forecast ran high in every month. Over the report's 10 months the gap grew to about 1 ppm (February 2026); in the extended forecast it reached almost 2 ppm (1.97 ppm in July 2026). On the 24-month holdout test, the selected model was the least accurate of the SARIMA models compared. A model with a steady trend (one regular difference) tracked the actual readings more closely.
 
 ## Data
 

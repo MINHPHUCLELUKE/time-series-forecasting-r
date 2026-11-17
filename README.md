@@ -13,7 +13,7 @@ Two time series analysis reports in R, each taking a real series from exploratio
 
 Each project also has a short follow-up that tests the selected model on data it did not see:
 
-- **CO2:** the report's forecast compared with 17 months of NOAA readings published afterwards. [View (live)](https://minhphucleluke.github.io/time-series-forecasting-r/co2/follow-up/co2-forecasting-report.html)
+- **CO2:** the report's model refit and its forecast extended to compare with 17 months of NOAA readings published afterwards. [View (live)](https://minhphucleluke.github.io/time-series-forecasting-r/co2/follow-up/co2-forecasting-report.html)
 - **Bitcoin:** ARIMA(1,1,0) compared with a random walk on the last 24 months. [View (live)](https://minhphucleluke.github.io/time-series-forecasting-r/bitcoin/follow-up/bitcoin-forecasting-report.html)
 
 ## Repository layout

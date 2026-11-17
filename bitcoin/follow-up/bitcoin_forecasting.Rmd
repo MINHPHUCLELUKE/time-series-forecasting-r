@@ -253,7 +253,7 @@ fan_tbl <- data.frame(Model = rep(c("ARIMA(1,1,0)", "ARIMA(1,1,0) with drift"), 
 tbl(fan_tbl, "Point forecasts and 95% intervals (index points)", digits = 0)
 ```
 
-Without drift the forecast is flat. With drift it keeps rising at the historical average rate. In both cases the upper end of the 95% interval a year out is about 25 to 30 times the lower end, which is the honest message: a monthly ARIMA model cannot say much about where Bitcoin will be in a year.
+Without drift the forecast is flat. With drift it keeps rising at the historical average rate. A year out, the upper end of the 95% interval is about `r round(fc12$upper[12, 2] / fc12$lower[12, 2])` times the lower end without drift and about `r round(fc12d$upper[12, 2] / fc12d$lower[12, 2])` times with drift, which is the honest message: a monthly ARIMA model cannot say much about where Bitcoin will be in a year.
 
 # 6. Results in one table
 
