@@ -96,7 +96,7 @@ Two benchmarks matter for an asset price:
 - **Random walk:** next month equals this month. Hard to beat for most market prices.
 - **Random walk with drift:** the same, plus the average historical growth rate.
 
-All models are fit on the same Box-Cox scale and errors are measured in index points. Because the index rose about 30,000-fold over the sample, errors are compared with **MAPE** (percentage error) and with **error relative to the random walk** (below 1 means the model beats it). Scaled measures such as MASE depend heavily on which period sets the scale, so they are not used here.
+All models are fit on the same Box-Cox scale and errors are measured in index points. Because the index spans about a 30,000-fold range over the sample, errors are compared with **MAPE** (percentage error) and with **error relative to the random walk** (below 1 means the model beats it). Scaled measures such as MASE depend heavily on which period sets the scale, so they are not used here.
 
 Because the original analysis found an upward trend, ARIMA(1,1,0) **with drift** is added as a candidate.
 
