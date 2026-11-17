@@ -1,31 +1,28 @@
 # Time Series Forecasting in R
 
-Two forecasting case studies, each tested the way a forecast is actually used: on data the model has not seen.
+Two time series analysis reports in R, each taking a real series from exploration through stationarity testing, transformation, model specification and selection.
 
-| Case study | Question | Headline |
-|---|---|---|
-| [Global CO2 at Mauna Loa](./co2) | How well did a SARIMA forecast made in April 2025 match what NOAA then measured? | All 17 new readings fell inside the 95% band, but the forecast ran high and the gap grew. A simpler trend cut the error by a fifth. |
-| [Bitcoin index](./bitcoin) | Does an ARIMA model forecast a crypto index better than a random walk? | No. Month to month it did no better, and over two years a simple upward drift mattered far more than the ARIMA structure. |
+| Report | Series | Selected model | Highlights |
+|---|---|---|---|
+| [Global CO2 Concentration Time Series Analysis and Forecasting](./co2) | Monthly CO2 at Mauna Loa, Apr 2015 to Apr 2025 | SARIMA(1,2,2)(0,1,1)[12] | Eight SARIMA candidates compared; 10-month forecast predicting 430 ppm, which NOAA confirmed in May 2025 |
+| [Bitcoin Index Time Series Analysis](./bitcoin) | Monthly Bitcoin index, Aug 2011 to Jan 2025 | ARIMA(1,1,0) | Box-Cox transformation, model specification with ACF/PACF, EACF and BIC table, ML and CSS estimation |
 
-**Live reports:** [CO2](https://minhphucleluke.github.io/time-series-forecasting-r/co2/co2-forecasting-report.html) · [Bitcoin](https://minhphucleluke.github.io/time-series-forecasting-r/bitcoin/bitcoin-forecasting-report.html)
+**Full reports (PDF):** [CO2](./co2/global-co2-time-series-analysis.pdf) · [Bitcoin](./bitcoin/bitcoin-index-time-series-analysis.pdf)
 
-## How both studies are tested
+## Follow-up analyses
 
-1. **Fit on the past, test on the future.** The last 24 months are held back, and every model is fit only on the data before them.
-2. **Compare with simple benchmarks.** A model earns its place only if it beats a naive forecast: a random walk for Bitcoin, a seasonal naive forecast for CO2.
-3. **Report what the numbers say,** including when the original model turns out not to be the best one.
+Each project also has a short follow-up that tests the selected model on data it did not see:
 
-The CO2 study adds a reality check: forecasts from the end of the study period compared with 17 months of real readings published afterwards.
+- **CO2:** the report's forecast compared with 17 months of NOAA readings published afterwards. [View (live)](https://minhphucleluke.github.io/time-series-forecasting-r/co2/follow-up/co2-forecasting-report.html)
+- **Bitcoin:** ARIMA(1,1,0) compared with a random walk on the last 24 months. [View (live)](https://minhphucleluke.github.io/time-series-forecasting-r/bitcoin/follow-up/bitcoin-forecasting-report.html)
 
 ## Repository layout
 
 ```
-co2/        SARIMA forecasting of Mauna Loa CO2 (R Markdown, data, figures, report)
-bitcoin/    ARIMA and GARCH analysis of a monthly Bitcoin index (R Markdown, data, figures, report)
+co2/        Report (PDF), key figures, data, follow-up analysis
+bitcoin/    Report (PDF), key figures, data, follow-up analysis
 ```
-
-Each folder has its own README with findings and method, the `.Rmd` source, the data, the rendered HTML report and the original full write-up as a PDF.
 
 ## Tools
 
-`R` · `forecast` · `TSA` · `tseries` · `rugarch` · `R Markdown`
+`R` · `forecast` · `TSA` · `tseries` · `urca` · `lmtest` · `R Markdown`

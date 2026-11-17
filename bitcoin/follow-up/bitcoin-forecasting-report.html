@@ -1828,7 +1828,7 @@ random walk on data it has not seen?</strong></p>
 <p>The series is an index supplied with the course data. It tracks
 Bitcoin’s price level but is not the USD price of one coin, so values
 are in index points.</p>
-<pre class="r"><code>raw &lt;- read.csv(&quot;data/bitcoin_index.csv&quot;)
+<pre class="r"><code>raw &lt;- read.csv(&quot;../data/bitcoin_index.csv&quot;)
 btc &lt;- ts(raw$Bitcoin, start = c(2011, 8), frequency = 12)
 
 tbl(data.frame(

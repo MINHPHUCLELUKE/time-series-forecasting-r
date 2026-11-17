@@ -42,7 +42,7 @@ Key results are collected in section 6.
 The series is an index supplied with the course data. It tracks Bitcoin's price level but is not the USD price of one coin, so values are in index points.
 
 ```{r data}
-raw <- read.csv("data/bitcoin_index.csv")
+raw <- read.csv("../data/bitcoin_index.csv")
 btc <- ts(raw$Bitcoin, start = c(2011, 8), frequency = 12)
 
 tbl(data.frame(

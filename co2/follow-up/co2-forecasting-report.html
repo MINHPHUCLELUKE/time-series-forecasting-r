@@ -1831,10 +1831,10 @@ to September 2026.</li>
 </div>
 <div id="data" class="section level1">
 <h1>1. Data</h1>
-<pre class="r"><code>d &lt;- read.csv(&quot;data/co2_mlo_2015_2025.csv&quot;)
+<pre class="r"><code>d &lt;- read.csv(&quot;../data/co2_mlo_2015_2025.csv&quot;)
 co2 &lt;- ts(d$average, start = c(2015, 4), frequency = 12)
 
-latest &lt;- read.csv(&quot;data/co2_mlo_noaa_latest.csv&quot;)
+latest &lt;- read.csv(&quot;../data/co2_mlo_noaa_latest.csv&quot;)
 latest &lt;- latest[(latest$year * 12 + latest$month) &gt; (2025 * 12 + 4), ]
 actual_new &lt;- ts(latest$average, start = c(2025, 5), frequency = 12)
 
