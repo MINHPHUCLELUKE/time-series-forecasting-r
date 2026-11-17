@@ -32,7 +32,7 @@ Seasonal ARIMA modelling of monthly atmospheric CO2 at the Mauna Loa Observatory
 
 ## Follow-up: checking the forecast against reality
 
-The report's forecast ended in February 2026. NOAA has since published readings up to September 2026, so I refit the selected model exactly as in the report and extended its forecast to 17 months to compare with what was actually measured. Its first 10 months reproduce the report's forecast to two decimal places. I also tested the model on a 24-month holdout.
+The report's forecast ended in February 2026. When I downloaded NOAA's record in November 2026, it ran to September 2026, so I refit the selected model exactly as in the report and extended its forecast to 17 months to compare with what was actually measured. Its first 10 months reproduce the report's forecast to two decimal places. I also tested the model on a 24-month holdout.
 
 **[View the follow-up analysis (live)](https://minhphucleluke.github.io/time-series-forecasting-r/co2/follow-up/co2-forecasting-report.html)** · [R Markdown source](./follow-up/co2_forecasting.Rmd)
 
@@ -43,7 +43,7 @@ The report's forecast ended in February 2026. NOAA has since published readings 
 ## Data
 
 - `data/co2_mlo_2015_2025.csv`: monthly mean CO2 at Mauna Loa, April 2015 to April 2025, used in the report
-- `data/co2_mlo_noaa_latest.csv`: the full NOAA monthly record downloaded in November 2026, used in the follow-up
+- `data/co2_mlo_noaa_latest.csv`: the full NOAA monthly record as downloaded in November 2026 (latest month: September 2026), used in the follow-up
 
 Source: Dr. Xin Lan, NOAA/GML ([gml.noaa.gov/ccgg/trends](https://gml.noaa.gov/ccgg/trends/)) and Dr. Ralph Keeling, Scripps Institution of Oceanography ([scrippsco2.ucsd.edu](https://scrippsco2.ucsd.edu/)).
 

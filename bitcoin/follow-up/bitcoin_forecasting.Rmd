@@ -219,7 +219,7 @@ tbl(data.frame(Parameter = names(cf), Estimate = cf,
 tbl(ic_v, "Does GARCH improve on constant variance? (lower is better)")
 ```
 
-The ARCH term (alpha1 = `r round(cf["alpha1"], 3)`, p = `r round(gfit@fit$matcoef["alpha1", 4], 2)`) is effectively zero, so last month's shock does not raise this month's volatility, and the constant-variance model has the lower AIC and BIC. **At monthly frequency, GARCH adds nothing.** The near-1 beta only traces a slow decline in volatility over the whole sample, which the chart below shows directly.
+The ARCH term (alpha1 = `r round(cf["alpha1"], 3)`, p = `r round(gfit@fit$matcoef["alpha1", 4], 2)`) is effectively zero, so last month's shock does not raise this month's volatility, and the constant-variance model has the lower AIC and BIC. **At monthly frequency, GARCH adds nothing.** The near-1 beta reflects a shift in the level of volatility, chiefly the single extreme year of 2013, rather than month-to-month clustering, as the chart below shows.
 
 ```{r vol-by-year, fig.height=4}
 yr <- floor(time(ret))
@@ -229,7 +229,7 @@ barplot(sd_year * 100, col = "steelblue", border = NA, ylab = "SD of monthly ret
         main = "Volatility of monthly returns by calendar year")
 ```
 
-Volatility was extreme in Bitcoin's early years (above `r round(max(sd_year) * 100)`% a month in 2013) and has stayed in a narrower band of roughly `r round(min(sd_year[as.character(2014:2024)]) * 100)` to `r round(max(sd_year[as.character(2014:2024)]) * 100)`% a month since 2014. A model of daily returns would be the right place to look for short-term clustering.
+Volatility shows no steady trend. One year stands out: 2013, at above `r round(max(sd_year) * 100)`% a month. Every other year from 2012 to 2024 sits in a band of roughly `r round(min(sd_year[names(sd_year) != "2013"]) * 100)` to `r round(max(sd_year[names(sd_year) != "2013"]) * 100)`% a month, and 2012 is the calmest year in the series. A model of daily returns would be the right place to look for short-term clustering.
 
 # 5. Twelve-month forecast
 
